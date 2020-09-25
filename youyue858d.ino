@@ -2,13 +2,22 @@
  * This is a custom firmware for my 'Youyue 858D+' hot-air soldering station.
  * It may or may not be useful to you, always double check if you use it.
  *
- * V1.48 (based on RaiHei V1.47 )
+ * V1.49
+ * 2020    - aWZHY0yQH81uOYvH
  * 2018    - Gabs'e
  * 2016    - RaiHei
  * 2015/16 - Robert Spitzenpfeil
  * 2015    - Moritz Augsburger
  *
  * License: GNU GPL v2
+ *
+ *
+ * Changes by aWZHY0yQH81uOYvH:
+ * - Added four preset buttons to quickly recall temperatures
+ * - Changed standby display back to "---" from "STB" because in my opinion it looks nicer :-)
+ * - Added the bottom segment to the 9
+ * - Removed flashing display while changing the temperature
+ * - Made the first temp change button press not change the set temp (for checking what it's set to)
  *
  * Changes by Gabs'e: (Tested on a Uvistar 858D with MK1841D3 modded to ATMEGA 328P, Fan current sensing , and Maximum FAN speed. Board 2016.06.09)
  * - Added an output (arduino pin 11) for a transistor switching FAN to maximum speed to cool down faster
@@ -17,7 +26,7 @@
  * Changes by RaiHei: (Tested on a Kaleep branded 858D+ delivered with MK1841D3 chip and modded to ATMEGA 328P. Board version 2015.08.21)
  * - Added an output (arduino pin 18) for a buzzer which will beep on the following events:
  *   Power on (high beep)
- *   Set temperatur reached (only one time after removing gun from cradle and after changing temperature with the key buttons) (high beep)
+ *   Set temperature reached (only one time after removing gun from cradle and after changing temperature with the key buttons) (high beep)
  *   Put gun correctly back in cradle (low beep)
  *   Setted timeout reached (low beep)
  *   Keypress (comment out "#define KEYBEEP" in youyue858d.h to disable) (very high beep)
@@ -34,46 +43,12 @@
  *   to avoid fan off-on-off-on-off bevaviour because temperature rises to fan_on temperature again after fan was switched off.
  *   Delay will only be active if a temperature of 100°C was reached.
  *   Possible values 0 to 60 seconds 
- * - Changed back max temperature to 450°C and shutdown temperature to 500°C because (depending on cal poti setting) 500° can lead to overflow of temp analog input.
- * 
- * 
- * Developed for / tested on by Robert Spitzenpfeil:
- * -------------------------------------------------
- *
- * Date:	2015-02-01
- * PCB version: 858D V6.0
- * Date code:   20140415
- *
- * Developed for / tested on by Moritz Augsburger:
- * -----------------------------------------------
- *
- * Date:	2015-02-01
- * PCB version: 858D V6.0
- * Date code:   20140415
- * 
- * Reported to work with (I did not test these myself):
- * ----------------------------------------------------
- *
- * PCB version: 858D V4.3
- * Date code:   20130529
- * HW mods:     not tested!
- *
- * ---
- *
- * PCB version: 858D V4.10
- * Date code:	20140112
- * HW mods:	not tested!
+ * - Changed back max temperature to 450°C and shutdown temperature to 500°C because (depending on cal pot setting) 500° can lead to overflow of temp analog input.
  *
  */
 
 /*
  *  Make sure to read and understand '/Docs/modes_of_operation.txt'
- *
- *
- * If you compile and upload using the Arduino-IDE + ISP, choose one of these target boards:
- *
- * LilyPad Arduino w/ ATmega168 (TESTED - WORKS)
- * LilyPad Arduino w/ ATmega328 (TESTED - WORKS)
  *
  * DO NOT USE A BOOTLOADER WITH THE WATCHDOG TIMER
  * 
@@ -85,7 +60,7 @@
 #define buzzer 18
 #define FW_MAJOR_V 1
 #define FW_MINOR_V_A 4
-#define FW_MINOR_V_B 8
+#define FW_MINOR_V_B 9
 /*
  * PC5: FAN-speed (A5 in Arduino lingo) (OK)
  * PC3: TIP122.base --> FAN (OK)
@@ -112,6 +87,11 @@
  * PB2: SW2 (button2) (OK)
  * PB4: reed switch (wand cradle sensor) (OK)
  *
+ * PE0: Preset 1
+ * PE1: Preset 2
+ * PE2: Preset 3
+ * PE3: Preset 4
+ *
  */
 
 #include <avr/io.h>
@@ -136,7 +116,10 @@ CPARAM fan_only = { 0, 1, 0, 0, 26, 27 };
 CPARAM display_adc_raw = { 0, 1, 0, 0, 28, 29 };
 CPARAM temp_multiplicator = { 10, 40, TEMP_MULTIPLICATOR_DEFAULT, TEMP_MULTIPLICATOR_DEFAULT, 30, 31 }; 
 CPARAM fan_off_delay = { 0, 60, FAN_OFF_DELAY_DEFAULT, FAN_OFF_DELAY_DEFAULT, 32, 33 }; 
-
+CPARAM preset_0 = {50, 450, TEMP_SETPOINT_DEFAULT, TEMP_SETPOINT_DEFAULT, 34, 35};
+CPARAM preset_1 = {50, 450, TEMP_SETPOINT_DEFAULT, TEMP_SETPOINT_DEFAULT, 36, 37};
+CPARAM preset_2 = {50, 450, TEMP_SETPOINT_DEFAULT, TEMP_SETPOINT_DEFAULT, 38, 39};
+CPARAM preset_3 = {50, 450, TEMP_SETPOINT_DEFAULT, TEMP_SETPOINT_DEFAULT, 40, 41};
 
 #ifdef CURRENT_SENSE_MOD
 CPARAM fan_current_min = { 0, 999, FAN_CURRENT_MIN_DEFAULT, FAN_CURRENT_MIN_DEFAULT, 22, 23 };
@@ -146,8 +129,8 @@ CPARAM fan_current_max = { 0, 999, FAN_CURRENT_MAX_DEFAULT, FAN_CURRENT_MAX_DEFA
 // See youyue858d.h if you want to use the 'FAN-speed mod' (HW changes required)
 // The following 2 CPARAM lines need changes in that case
 //
-CPARAM fan_speed_min = { 120, 180, FAN_SPEED_MIN_DEFAULT, FAN_SPEED_MIN_DEFAULT, 18, 19 };
-CPARAM fan_speed_max = { 300, 400, FAN_SPEED_MAX_DEFAULT, FAN_SPEED_MAX_DEFAULT, 20, 21 };
+CPARAM fan_speed_min = { 0, 999, FAN_SPEED_MIN_DEFAULT, FAN_SPEED_MIN_DEFAULT, 18, 19 };
+CPARAM fan_speed_max = { 0, 999, FAN_SPEED_MAX_DEFAULT, FAN_SPEED_MAX_DEFAULT, 20, 21 };
 #endif
 
 volatile uint8_t key_state;	// debounced and inverted key state: bit = 1: key pressed
@@ -161,6 +144,11 @@ bool hasheated = false;
 bool firstbeep = true;
 int tcounter = 0; // timer for fan off delay
 int scounter = 0; // timer to debounce beep when putting gun in cradle
+
+uint8_t temp_setpoint_save = 0;
+int32_t button_input_time = 0;
+uint32_t preset_debounce = 0;
+uint8_t preset_execute = 0;
 
 int main(void)
 {
@@ -216,7 +204,6 @@ int main(void)
 		static int16_t temp_average = 0;
 		static int16_t temp_average_previous = 0;
 
-		static int32_t button_input_time = 0;
 		static int16_t heater_ctr = 0;
 		static int16_t heater_duty_cycle = 0;
 		static int16_t error = 0;
@@ -224,14 +211,13 @@ int main(void)
 		static int16_t velocity = 0;
 		static float PID_drive = 0;
 
-		static uint8_t temp_setpoint_saved = 1;
 		static int32_t temp_setpoint_saved_time = 0;
 
 		static uint32_t heater_start_time = 0;
 
 		uint16_t adc_raw = analogRead(A0);	// need raw value later, store it here and avoid 2nd ADC read
 
-    temp_inst = ((adc_raw*10)/temp_multiplicator.value) + temp_offset_corr.value; 
+		temp_inst = ((adc_raw*10)/temp_multiplicator.value) + temp_offset_corr.value; 
     
 		if (temp_inst < 0) {
 			temp_inst = 0;
@@ -299,112 +285,134 @@ int main(void)
 			temp_avg_ctr = 0;
 		}
 		// fan/cradle handling
-    if (cradlebeep == false && REEDSW_CLOSED)
-    {
-     if (scounter < 300)
-     {
-      scounter++;
-      delay(1);
-     }
-     else
-     {
-      scounter = 0;
-      tone(buzzer, 1000, 100);
-      cradlebeep = true;
-     }
-    }
-    if (cradlebeep == true && REEDSW_OPEN)
-    {
-      cradlebeep = false;
-      firstbeep = true;
-      timeoutbeep = false;
-    }
-    if ((millis() - heater_start_time) > ((uint32_t) (slp_timeout.value) * 60 * 1000) && timeoutbeep == false)
-    {
-      tone(buzzer, 1000, 100);
-      timeoutbeep = true;
-    }
+		if (cradlebeep == false && REEDSW_CLOSED)
+		{
+		 if (scounter < 300)
+		 {
+		  scounter++;
+		  delay(1);
+		 }
+		 else
+		 {
+		  scounter = 0;
+		  tone(buzzer, 1000, 100);
+		  cradlebeep = true;
+		 }
+		}
+		if (cradlebeep == true && REEDSW_OPEN)
+		{
+		  cradlebeep = false;
+		  firstbeep = true;
+		  timeoutbeep = false;
+		}
+		if ((millis() - heater_start_time) > ((uint32_t) (slp_timeout.value) * 60 * 1000) && timeoutbeep == false)
+		{
+		  tone(buzzer, 1000, 100);
+		  timeoutbeep = true;
+		}
 
-    if (REEDSW_OPEN && temp_average > 100)
-    {
-      hasheated = true;
-    }
-    
-    if (REEDSW_CLOSED && fan_only.value == 0 && (temp_average > FAN_OFF_TEMP)) {                // In cradle cool down heating mode cooling
-      FAN_ON;
-      FAN_MAX_ON;
-    } else if (REEDSW_CLOSED && fan_only.value == 1 && (temp_average > FAN_OFF_TEMP_FANONLY)) { // In cradle cool down FAN mode cooling
-      FAN_ON;
-      FAN_MAX_ON;
-    }else if (REEDSW_CLOSED && fan_only.value == 1 && (temp_average <= FAN_OFF_TEMP_FANONLY)) { // In cradle cool down FAN mode cold
-      FAN_OFF;
-      FAN_MAX_OFF;
-    } else if (REEDSW_CLOSED && fan_only.value == 0 && (temp_average <= FAN_OFF_TEMP)) {        // In cradle cool down heating mode cold
-       if (tcounter < (fan_off_delay.value*1000) && hasheated == true)
-       {
-        tcounter++;
-        delay(1);
-       }
-       else
-       {
-        tcounter = 0;
-        hasheated = false;
-        FAN_OFF;
-        FAN_MAX_OFF;
-       }
-    
-    } else { //  Outside cradle
-      FAN_ON;
-      FAN_MAX_OFF;
-    }
+		if (REEDSW_OPEN && temp_average > 100)
+		{
+		  hasheated = true;
+		}
+	
+		if (REEDSW_CLOSED && fan_only.value == 0 && (temp_average > FAN_OFF_TEMP)) {                // In cradle cool down heating mode cooling
+		  FAN_ON;
+		  FAN_MAX_ON;
+		} else if (REEDSW_CLOSED && fan_only.value == 1 && (temp_average > FAN_OFF_TEMP_FANONLY)) { // In cradle cool down FAN mode cooling
+		  FAN_ON;
+		  FAN_MAX_ON;
+		}else if (REEDSW_CLOSED && fan_only.value == 1 && (temp_average <= FAN_OFF_TEMP_FANONLY)) { // In cradle cool down FAN mode cold
+		  FAN_OFF;
+		  FAN_MAX_OFF;
+		} else if (REEDSW_CLOSED && fan_only.value == 0 && (temp_average <= FAN_OFF_TEMP)) {        // In cradle cool down heating mode cold
+		   if (tcounter < (fan_off_delay.value*1000) && hasheated == true)
+		   {
+			tcounter++;
+			delay(1);
+		   }
+		   else
+		   {
+			tcounter = 0;
+			hasheated = false;
+			FAN_OFF;
+			FAN_MAX_OFF;
+		   }
+	
+		} else { //  Outside cradle
+		  FAN_ON;
+		  FAN_MAX_OFF;
+		}
+		
+		// preset key handling
+		uint8_t preset_keys=get_preset_keys();
+		if(preset_keys) {
+			preset_execute=preset_keys;
+			preset_debounce=millis();
+		} else if(preset_execute && preset_debounce+25 < millis()) { // update on release
+			switch(preset_execute) {
+				case 0b00000001:
+					temp_setpoint.value=preset_0.value;
+					temp_setpoint_save=1;
+					break;
+				case 0b00000010:
+					temp_setpoint.value=preset_1.value;
+					temp_setpoint_save=1;
+					break;
+				case 0b00000100:
+					temp_setpoint.value=preset_2.value;
+					temp_setpoint_save=1;
+					break;
+				case 0b00001000:
+					temp_setpoint.value=preset_3.value;
+					temp_setpoint_save=1;
+					break;
+			}
+			button_input_time = millis();
+			preset_execute=0;
+		}
+		
 		// menu key handling
 		if (get_key_short(1 << KEY_UP)) {
-			button_input_time = millis();
 			if (temp_setpoint.value < temp_setpoint.value_max) {
-				temp_setpoint.value++;
-        firstbeep = true;
-        #ifdef KEYBEEP
-          tone(buzzer, 2000, 20);
-        #endif
+				update_temp_setpoint(temp_setpoint.value+1);
+			firstbeep = true;
+			#ifdef KEYBEEP
+			  tone(buzzer, 2000, 20);
+			#endif
 			}
-			temp_setpoint_saved = 0;
+			button_input_time = millis();
 		} else if (get_key_short(1 << KEY_DOWN)) {
-			button_input_time = millis();
 			if (temp_setpoint.value > temp_setpoint.value_min) {
-				temp_setpoint.value--;
-        firstbeep = true;
-        #ifdef KEYBEEP
-          tone(buzzer, 2000, 20);
-        #endif
+				update_temp_setpoint(temp_setpoint.value-1);
+			firstbeep = true;
+			#ifdef KEYBEEP
+			  tone(buzzer, 2000, 20);
+			#endif
 			}
-			temp_setpoint_saved = 0;
+			button_input_time = millis();
 		} else if (get_key_long_r(1 << KEY_UP) || get_key_rpt_l(1 << KEY_UP)) {
-			button_input_time = millis();
 			if (temp_setpoint.value < (temp_setpoint.value_max - 10)) {
-				temp_setpoint.value += 10;
-        firstbeep = true;
-        #ifdef KEYBEEP
-          tone(buzzer, 2000, 20);
-        #endif
+				update_temp_setpoint(temp_setpoint.value+10);
+			firstbeep = true;
+			#ifdef KEYBEEP
+			  tone(buzzer, 2000, 20);
+			#endif
 			} else {
-				temp_setpoint.value = temp_setpoint.value_max;
+				update_temp_setpoint(temp_setpoint.value_max);
 			}
-			temp_setpoint_saved = 0;
-
-		} else if (get_key_long_r(1 << KEY_DOWN) || get_key_rpt_l(1 << KEY_DOWN)) {
 			button_input_time = millis();
-
+		} else if (get_key_long_r(1 << KEY_DOWN) || get_key_rpt_l(1 << KEY_DOWN)) {
 			if (temp_setpoint.value > (temp_setpoint.value_min + 10)) {
-				temp_setpoint.value -= 10;
-        firstbeep = true;
-        #ifdef KEYBEEP
-          tone(buzzer, 2000, 20);
-        #endif
+				update_temp_setpoint(temp_setpoint.value-10);
+			firstbeep = true;
+			#ifdef KEYBEEP
+			  tone(buzzer, 2000, 20);
+			#endif
 			} else {
-				temp_setpoint.value = temp_setpoint.value_min;
+				update_temp_setpoint(temp_setpoint.value_min);
 			}
-
-			temp_setpoint_saved = 0;
+			button_input_time = millis();
 		} else if (get_key_common_l(1 << KEY_UP | 1 << KEY_DOWN)) {
 			HEATER_OFF;	// security reasons, delay below!
 #ifdef USE_WATCHDOG
@@ -417,10 +425,10 @@ int main(void)
 				change_config_parameter(&d_gain, "D");
 				change_config_parameter(&i_thresh, "ITH");
 				change_config_parameter(&temp_offset_corr, "TOF");
-        change_config_parameter(&temp_multiplicator, "TPL");
+        		change_config_parameter(&temp_multiplicator, "TPL");
 				change_config_parameter(&temp_averages, "AVG");
 				change_config_parameter(&slp_timeout, "SLP");
-        change_config_parameter(&fan_off_delay, "DEL");       
+        		change_config_parameter(&fan_off_delay, "DEL");       
 				change_config_parameter(&display_adc_raw, "ADC");
 #ifdef CURRENT_SENSE_MOD
 				change_config_parameter(&fan_current_min, "FCL");
@@ -432,7 +440,7 @@ int main(void)
 			} else {
 				get_key_press(1 << KEY_UP | 1 << KEY_DOWN);	// clear inp state
 				fan_only.value ^= 0x01;
-				temp_setpoint_saved = 0;
+				temp_setpoint_save = 1;
 				if (fan_only.value == 0) {
 					button_input_time = millis();	// show set temp after disabling fan only mode
 				}
@@ -472,23 +480,27 @@ int main(void)
 		}
 		// display output
 		if ((millis() - button_input_time) < SHOW_SETPOINT_TIMEOUT) {
-			if (display_blink < 5) {
+			if (display_blink < 5 && millis() - button_input_time > 500) {
 				clear_display();
 			} else {
 				display_number(temp_setpoint.value);	// show temperature setpoint
 			}
 		} else {
-			if (temp_setpoint_saved == 0) {
+			if (temp_setpoint_save) {
 				set_eeprom_saved_dot();
 				eep_save(&temp_setpoint);
+				eep_save(&preset_0);
+				eep_save(&preset_1);
+				eep_save(&preset_2);
+				eep_save(&preset_3);
 				eep_save(&fan_only);
 				temp_setpoint_saved_time = millis();
-				temp_setpoint_saved = 1;
+				temp_setpoint_save = 0;
 			} else if (temp_average <= SAFE_TO_TOUCH_TEMP) {
 				if (fan_only.value == 1) {
 					display_string("FAN");
 				} else {
-					display_string("STB");
+					display_string("---");
 				}
 			} else if (fan_only.value == 1) {
 				if (display_blink < 20) {
@@ -499,11 +511,11 @@ int main(void)
 			} else if (display_adc_raw.value == 1) {
 				display_number(adc_raw);
 			} else if (abs((int16_t) (temp_average) - (int16_t) (temp_setpoint.value)) < TEMP_REACHED_MARGIN) {
-      if (firstbeep == true) // beep one time when set temperature is reached
-      {
-			  tone(buzzer, 1500, 100);
-        firstbeep = false;
-      }
+				if (firstbeep == true) // beep one time when set temperature is reached
+				{
+					tone(buzzer, 1500, 100);
+					firstbeep = false;
+				}
 				display_number(temp_setpoint.value);	// avoid showing insignificant fluctuations on the display (annoying)
 			} else {
 				display_number(temp_average);
@@ -552,7 +564,10 @@ void setup_858D(void)
 	DDRD |= 0xFF;		// all as outputs (7-seg segments)
 	DDRB |= (_BV(PB0) | _BV(PB6) | _BV(PB7));	// 7-seg digits 1,2,3
 
-  DDRB |= _BV(PB3); // set FAN_MAX as output
+	DDRB |= _BV(PB3); // set FAN_MAX as output
+	
+	DDRE = 0; // Buttons
+	PORTE = 0b00001111; // Pullups
 
 
 #ifdef CURRENT_SENSE_MOD
@@ -596,13 +611,17 @@ void setup_858D(void)
 	eep_load(&d_gain);
 	eep_load(&i_thresh);
 	eep_load(&temp_offset_corr);
-  eep_load(&temp_multiplicator);
+	eep_load(&temp_multiplicator);
 	eep_load(&temp_setpoint);
 	eep_load(&temp_averages);
 	eep_load(&slp_timeout);
-  eep_load(&fan_off_delay);
+	eep_load(&fan_off_delay);
 	eep_load(&fan_only);
 	eep_load(&display_adc_raw);
+	eep_load(&preset_0);
+	eep_load(&preset_1);
+	eep_load(&preset_2);
+	eep_load(&preset_3);
 #ifdef CURRENT_SENSE_MOD
 	eep_load(&fan_current_min);
 	eep_load(&fan_current_max);
@@ -717,11 +736,11 @@ void restore_default_conf(void)
 	d_gain.value = d_gain.value_default;
 	i_thresh.value = i_thresh.value_default;
 	temp_offset_corr.value = temp_offset_corr.value_default;
-  temp_multiplicator.value = temp_multiplicator.value_default;
+	temp_multiplicator.value = temp_multiplicator.value_default;
 	temp_setpoint.value = temp_setpoint.value_default;
 	temp_averages.value = temp_averages.value_default;
 	slp_timeout.value = slp_timeout.value_default;
-  fan_off_delay.value = fan_off_delay.value_default;
+	fan_off_delay.value = fan_off_delay.value_default;
 	fan_only.value = 0;
 	display_adc_raw.value = 0;
 #ifdef CURRENT_SENSE_MOD
@@ -732,18 +751,23 @@ void restore_default_conf(void)
 	fan_speed_max.value = fan_speed_max.value_default;
 #endif
 
+	preset_0.value = preset_0.value_default;
+	preset_1.value = preset_1.value_default;
+	preset_2.value = preset_2.value_default;
+	preset_3.value = preset_3.value_default;
+
 	eep_save(&p_gain);
 	eep_save(&i_gain);
 	eep_save(&d_gain);
 	eep_save(&i_thresh);
 	eep_save(&temp_offset_corr);
-  eep_save(&temp_multiplicator);
+	eep_save(&temp_multiplicator);
 	eep_save(&temp_setpoint);
 	eep_save(&temp_averages);
 	eep_save(&slp_timeout);
-  eep_save(&fan_off_delay);
+	eep_save(&fan_off_delay);
 	eep_save(&fan_only);
-  eep_save(&display_adc_raw);
+	eep_save(&display_adc_raw);
 #ifdef CURRENT_SENSE_MOD
 	eep_save(&fan_current_min);
 	eep_save(&fan_current_max);
@@ -751,6 +775,11 @@ void restore_default_conf(void)
 	eep_save(&fan_speed_min);
 	eep_save(&fan_speed_max);
 #endif
+	
+	eep_save(&preset_0);
+	eep_save(&preset_1);
+	eep_save(&preset_2);
+	eep_save(&preset_3);
 }
 
 void set_dot(void)
@@ -836,7 +865,7 @@ void display_char(uint8_t digit, uint8_t character, uint8_t dot)
 		portout = (uint8_t) (~0xEF);	// '8'
 		break;
 	case 9:
-		portout = (uint8_t) (~0xE9);	// '9'
+		portout = (uint8_t) (~0xED);	// '9'
 		break;
 	case '-':
 		portout = (uint8_t) (~0x40);	// '-'
@@ -921,7 +950,7 @@ void fan_test(void)
 
  FAN_ON;
  FAN_MAX_ON;
- delay(3000);
+ delay(2000);
 #ifdef CURRENT_SENSE_MOD
 	uint16_t fan_current;
 	fan_current = analogRead(A2);
@@ -976,7 +1005,7 @@ void show_firmware_version(void)
 	framebuffer.dot[2] = 1;	// dig2.dot
 	framebuffer.changed = 1;
 	fb_update();
-  tone(buzzer, 2000, 20);
+	tone(buzzer, 2000, 20);
 }
 
 void setup_timer1_ctc(void)
@@ -1248,3 +1277,27 @@ void fb_update()
 	SREG = _sreg;
 }
 
+uint8_t get_preset_keys() {
+	return (~PINE)&0b00001111;
+}
+
+void update_temp_setpoint(int val) {
+	if(millis() - button_input_time < SHOW_SETPOINT_TIMEOUT) { // Don't change temp if it's not already showing
+		temp_setpoint.value=val;
+		temp_setpoint_save=1;
+		switch(get_preset_keys()) {
+			case 0b00000001:
+				preset_0.value=val;
+				break;
+			case 0b00000010:
+				preset_1.value=val;
+				break;
+			case 0b00000100:
+				preset_2.value=val;
+				break;
+			case 0b00001000:
+				preset_3.value=val;
+				break;
+		}
+	}
+}

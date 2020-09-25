@@ -1,0 +1,24 @@
+Id,Designator,Package,Quantity,Designation,DigiKey Part Number
+1,"Q2,Q1",SOT-23_Handsoldering,2,2N7002,1727-8643-1-ND
+2,D1,D_SOD-123,1,D_Small,BAS16HT3GOSCT-ND
+3,R11,R_0603_1608Metric_Pad1.05x0.95mm_HandSolder,1,220,CR0603-JW-221ELFCT-ND
+4,U2,TQFP-32_7x7mm_P0.8mm,1,ATmega328PB-AU,ATMEGA328PB-AN-ND
+5,J2,PinHeader_2x03_P2.54mm_Vertical,1,ICSP,
+6,"R10,R9,R8,R7,R4,R1",R_0603_1608Metric_Pad1.05x0.95mm_HandSolder,6,10k,CR0603-JW-103ELFCT-ND
+7,JP1,SolderJumper-3_P2.0mm_Open_TrianglePad1.0x1.5mm,1,SolderJumper_3_Open,
+8,J3,DIP-20_W7.62mm_LongPads,1,MK1841D3,
+9,U1,SOIC-8_3.9x4.9mm_P1.27mm,1,LM2904,LM2904EDR2GOSCT-ND
+10,TP3,TestPoint_THTPad_D2.5mm_Drill1.2mm,1,FAN_SPEED,
+11,TP2,TestPoint_THTPad_D2.5mm_Drill1.2mm,1,COMP_ADJ,
+12,TP1,TestPoint_THTPad_D2.5mm_Drill1.2mm,1,Vref,
+13,SW1,SolderWirePad_1x05_P3.81mm_Drill1.2mm,1,SW_Push_4x,
+14,"RV2,RV1",Potentiometer_Bourns_TC33X_Vertical,2,10k,TC33X-103ECT-ND
+15,R6,R_0603_1608Metric_Pad1.05x0.95mm_HandSolder,1,100k,CR0603-JW-104ELFCT-ND
+16,R5,R_0603_1608Metric_Pad1.05x0.95mm_HandSolder,1,1M,CR0603-JW-105ELFCT-ND
+17,"R3,R2",R_0603_1608Metric_Pad1.05x0.95mm_HandSolder,2,390,RMCF0603JT390RCT-ND
+18,J5,SolderWirePad_1x01_Drill1.2mm,1,FAN_MAX_SPEED,
+19,J4,SolderWirePad_1x04_P3.81mm_Drill1.2mm,1,Extra,
+20,J1,SolderWirePad_1x01_Drill1.2mm,1,ISENSE,
+21,"C6,C5,C3,C2,C1",C_0603_1608Metric_Pad1.05x0.95mm_HandSolder,5,100n,1276-1935-1-ND
+22,C4,C_0603_1608Metric_Pad1.05x0.95mm_HandSolder,1,1µ,1276-1866-1-ND
+23,BZ1,Buzzer_12x9.5RM6.5,1,Buzzer,668-1470-ND

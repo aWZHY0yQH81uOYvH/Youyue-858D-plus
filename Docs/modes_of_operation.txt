@@ -30,30 +30,33 @@ Temperature control:
 * The set-point is stored in eeprom
 * Temperature range: 50...500 °C
 * Fan Only mode (press both buttons together shortly)
+* Hold down a preset button while changing the temperature to set the temperature. Press the button again to recall.
 
 
 Settings:
 =========
 
-* Config mode is entered by pressing both buttons _at the same time_ 
+* Config mode is entered by pressing both buttons at the same time 
   for a longer time
 * When Settings are changed, the heater is always off
 * The state of the fan is not changed when entering config mode
 * The display will show an abbreviated name for each parameter
-* Going to the next one is done by pressing both buttons _at the same time_
+* Going to the next one is done by pressing both buttons at the same time
 
   p)            p_gain    0...999
   i)            i_gain    0...999
   d)            d_gain    0...999
 ith)       i_threshold    0...100
 tof)  temp_offset_corr -100...100
+tpl)temp_multiplicator   10...40
 avg)     temp_averages  100...999
 slp)       slp_timeout    0...30
-fcl)   fan_current_min    0...999
-fch)   fan_current_max    0...999
+del)     fan_off_delay    0...60
+adc)   display_adc_raw	  0...1
+fcl)   fan_current_min    0...999 (not used)
+fch)   fan_current_max    0...999 (not used)
 fsl)     fan_speed_min  120...180
 fsh)     fan_speed_max  300...400
-adc)   display_adc_raw	  0...1
 
 * fsl/fsh and fcl/fch are depending on CURRENT_SENSE_MOD compile time option
 

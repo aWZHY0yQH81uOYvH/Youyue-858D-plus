@@ -2,7 +2,19 @@
 Youyue-858D-plus
 ================
 
-Custom firmware for the Youyue 858D+ (ATmega168/ATmega328)
+Custom firmware and adapter PCB for the Youyue 858D+ with MK1841D3 stock MCU
+
+This board and firmware is designed only for the ATmega328*PB* because it makes use of its extra port E I/O.
+
+This repo includes a PCB that contains all the mods I could find:
+* wguibas's MK1841D3 to AVR pinout adapting
+* madworm's fancy fan speed commutation sensing
+* RaiHei's buzzer
+* Gabse's max fan speed cooldown
+* 4 buttons for recalling preset temperatures
+* Some extra I/O breakout for more hacking
+
+Order the parts and PCB in the PCB folder. Then, use [this instructable](https://www.instructables.com/id/858D-SMD-Hot-Ait-Reflow-Station-Hack/) as a general guide. Add some buttons to the front panel for the presets.
 
 There is a 'user manual' of sorts in the 'Docs' folder.
 
@@ -16,26 +28,18 @@ Please note:
 
 Although this device looks very much like ones sold by 'Atten' and others, the innards
 are not necessarily the same. The heater / wand are probably the same, but I know that
-e.g. the 'Atten 858D' uses a different mainboard with a different brand micro controller.
+e.g. the 'Atten 858D' uses a different mainboard with a different brand microcontroller.
 
 Naturally, this firmware will only work 'as is' for the exact mcu / mainboard combination I have.
 Please see the 'Docs' folder for schematic and PCB photos.
 
-MCU-Adapter [repository](//github.com/madworm/Youyue-858D-plus-MCU-adapter) (optional).
-
-FAN-speed-mod [repository](//github.com/madworm/Youyue-858D-plus-FAN-speed-mod) (optional).
-
-Adapter PCB for clones with Samsung MCU [EEVBLOG](http://www.eevblog.com/forum/reviews/youyue-858d-some-reverse-engineering-custom-firmware/165/)
-
 
 Compiling/Development
 =====================
-There are currently three options available, choose your preferred environemt:
-* Use the [Arduino IDE](https://www.arduino.cc/en/Main/Software), make sure you do ISP Upload and _don't_ use the arduino bootloader.
-* Use [Atmel Studio 6](https://www.mikrocontroller.net/articles/Atmel_Studio#Downloads) together with the [VisualMicro Plugin](http://www.visualmicro.com/page/Arduino-for-Atmel-Studio.aspx) for Arduino support, make sure you do ISP Upload and _don't_ use the arduino bootloader.
-* "raw" text editing and Makefiles, to do so run `git submodule update --init` and afterwards `make ispload`. You probably need to adjust `ISP_PROG` and `AVRDUDE_ARD_PROGRAMMER` in the makefile.
-
-The supplied `release.sh` only works together with the Makefile method.
+Since this version of the firmware uses the PB variant of the chip, you need to use the makefile. You may need to adjust `ISP_PROG` and `AVRDUDE_ARD_PROGRAMMER` in the makefile depending on what programmer you have.
+* Do `make` to just compile the project.
+* Do `make ispload` to compile and upload the project.
+* If you don't want to edit the firmware, you can just follow the instructions in the binaries folder to upload without compiling.
 
 ---
 

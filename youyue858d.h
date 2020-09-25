@@ -1,24 +1,9 @@
 #ifndef youyoue858d_h
 #define youyoue858d_h
 
-/*
- * See the Docs folder for how to add a 1 Ohm current sense
- * resistor to meaure the fan-current.
- *
- * Some time in the future, this may be used to check for
- * true fan-speed via the commutation signal.
- *
- * This only requires an opamp (used as comparator) +
- * a few resistors / caps.
- *
- * http://dangerousprototypes.com/2014/03/01/app-note-fan-health-monitoring-and-the-mic502/
- * http://www.micrel.com/_PDF/App-Notes/an-34.pdf
- *
- */
-
 //#define DEBUG
 #define KEYBEEP
-//#define CURRENT_SENSE_MOD
+// #define CURRENT_SENSE_MOD
 
 #define USE_WATCHDOG
 //#define DISPLAY_MCUSR
@@ -60,6 +45,8 @@ void setup_858D(void);
 void setup_timer1_ctc(void);
 void show_firmware_version(void);
 void fb_update(void);
+void update_temp_setpoint(int);
+uint8_t get_preset_keys(void);
 #ifdef USE_WATCHDOG
 uint8_t _mcusr __attribute__ ((section(".noinit")));
 void watchdog_off_early(void) __attribute__ ((naked)) __attribute__ ((section(".init3")));	// requires R1 to be zero! (do NOT use .init1)
@@ -122,7 +109,7 @@ uint8_t get_key_common_l(uint8_t key_mask);
 #define D_GAIN_SCALING 25.0
 
 #define TEMP_OFFSET_CORR_DEFAULT 0
-#define TEMP_MULTIPLICATOR_DEFAULT 10
+#define TEMP_MULTIPLICATOR_DEFAULT 23
 #define TEMP_SETPOINT_DEFAULT 100
 
 #define TEMP_AVERAGES_DEFAULT 250L
@@ -140,15 +127,16 @@ uint8_t get_key_common_l(uint8_t key_mask);
 // Comment out the following 2 #defines, if you want to use the FAN-speed mod (HW changes required)
 // Continue reading below...
 //
-
-#define FAN_SPEED_MIN_DEFAULT 120UL
-#define FAN_SPEED_MAX_DEFAULT 320UL
+// NOT CONNECTED ON THIS PCB
+// 
+// #define FAN_SPEED_MIN_DEFAULT 120UL
+// #define FAN_SPEED_MAX_DEFAULT 320UL
 
 // 
 // Good starting values with BLDC FAN-speed mod
 //
-// #define FAN_SPEED_MIN_DEFAULT 450UL
-// #define FAN_SPEED_MAX_DEFAULT 800UL
+#define FAN_SPEED_MIN_DEFAULT 450UL
+#define FAN_SPEED_MAX_DEFAULT 800UL
 //
 // --> Don't forget to extend the ranges in the .ino <--
 //
